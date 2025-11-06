@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybbit - Create Post</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="header">
+        <div class="logo">Cybbit</div>
+    </div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <a href="/posts" class="nav-item">
+                <span class="icon">📄</span>
+                <span>Posts</span>
+            </a>
+            <a href="/create" class="nav-item active">
+                <span class="icon">✏️</span>
+                <span>Create</span>
+            </a>
+        </div>
+        
+        <div class="content">
+            <div class="form-container">
+                <h1 class="form-title">Create New Post</h1>
+                <form method="POST" action="/create-post">
+                    <div class="form-group">
+                        <label for="author">Author Username</label>
+                        <input type="text" id="author" name="author" placeholder="@YourUsername" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="title">Post Title</label>
+                        <input type="text" id="title" name="title" placeholder="Enter a descriptive title" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="content">Content</label>
+                        <textarea id="content" name="content" placeholder="Write your post content here..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tags">Tags (comma-separated)</label>
+                        <input type="text" id="tags" name="tags" placeholder="#Security, #Vulnerability, #News">
+                    </div>
+                    
+                    <button type="submit" class="submit-btn">Publish Post</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
