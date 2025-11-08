@@ -14,12 +14,61 @@ body {
     background-color: #1a2332;
     padding: 15px 30px;
     border-bottom: 1px solid #2d3748;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .logo {
     font-size: 24px;
     font-weight: bold;
     color: #ffffff;
+}
+
+.user-menu {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.username {
+    color: #60a5fa;
+    font-weight: 500;
+}
+
+.login-btn, .register-btn, .logout-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.login-btn {
+    color: #60a5fa;
+    border: 1px solid #60a5fa;
+}
+
+.login-btn:hover {
+    background-color: #1e3a5f;
+}
+
+.register-btn {
+    background-color: #3b82f6;
+    color: #ffffff;
+}
+
+.register-btn:hover {
+    background-color: #2563eb;
+}
+
+.logout-btn {
+    color: #9ca3af;
+    border: 1px solid #374151;
+}
+
+.logout-btn:hover {
+    background-color: #374151;
 }
 
 .container {
@@ -61,12 +110,23 @@ body {
     max-width: 900px;
 }
 
+.post-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
 .post-card {
     background-color: #1a2332;
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 20px;
     border: 1px solid #2d3748;
+    transition: border-color 0.2s;
+}
+
+.post-link:hover .post-card {
+    border-color: #60a5fa;
 }
 
 .post-header {
@@ -93,10 +153,24 @@ body {
     color: #ffffff;
 }
 
+.post-title-large {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: #ffffff;
+}
+
 .post-content {
     color: #d1d5db;
     line-height: 1.6;
     margin-bottom: 15px;
+}
+
+.post-content-full {
+    color: #d1d5db;
+    line-height: 1.8;
+    margin-bottom: 20px;
+    font-size: 16px;
 }
 
 .tags {
@@ -128,6 +202,110 @@ body {
     cursor: pointer;
 }
 
+.back-link {
+    display: inline-block;
+    color: #60a5fa;
+    text-decoration: none;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+.comments-section {
+    margin-top: 40px;
+}
+
+.comments-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 20px;
+}
+
+.comment-form-container {
+    background-color: #1a2332;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    border: 1px solid #2d3748;
+}
+
+.comment-form textarea {
+    width: 100%;
+    padding: 12px;
+    background-color: #0f1419;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    color: #e4e6eb;
+    font-size: 14px;
+    font-family: inherit;
+    min-height: 100px;
+    resize: vertical;
+    margin-bottom: 12px;
+}
+
+.comment-form textarea:focus {
+    outline: none;
+    border-color: #60a5fa;
+}
+
+.login-prompt {
+    background-color: #1a2332;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    border: 1px solid #2d3748;
+    text-align: center;
+}
+
+.login-prompt p {
+    color: #9ca3af;
+}
+
+.login-prompt a {
+    color: #60a5fa;
+    text-decoration: none;
+}
+
+.login-prompt a:hover {
+    text-decoration: underline;
+}
+
+.comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.comment-card {
+    background-color: #1a2332;
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid #2d3748;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.comment-content {
+    color: #d1d5db;
+    line-height: 1.6;
+}
+
+.no-comments {
+    color: #6b7280;
+    text-align: center;
+    padding: 30px;
+    font-style: italic;
+}
+
 .form-container {
     background-color: #1a2332;
     border-radius: 8px;
@@ -154,6 +332,7 @@ label {
 }
 
 input[type="text"],
+input[type="password"],
 textarea {
     width: 100%;
     padding: 12px;
@@ -166,6 +345,7 @@ textarea {
 }
 
 input[type="text"]:focus,
+input[type="password"]:focus,
 textarea:focus {
     outline: none;
     border-color: #60a5fa;
@@ -195,4 +375,67 @@ textarea {
 .icon {
     width: 20px;
     height: 20px;
+}
+
+.alert {
+    padding: 12px 20px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.alert-success {
+    background-color: #065f46;
+    border: 1px solid #10b981;
+    color: #d1fae5;
+}
+
+.alert-error {
+    background-color: #7f1d1d;
+    border: 1px solid #ef4444;
+    color: #fecaca;
+}
+
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 60px);
+    padding: 30px;
+}
+
+.auth-card {
+    background-color: #1a2332;
+    border-radius: 8px;
+    padding: 40px;
+    border: 1px solid #2d3748;
+    width: 100%;
+    max-width: 450px;
+}
+
+.auth-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 30px;
+    color: #ffffff;
+    text-align: center;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 20px;
+    color: #9ca3af;
+}
+
+.auth-footer a {
+    color: #60a5fa;
+    text-decoration: none;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+.post-full {
+    margin-bottom: 30px;
 }

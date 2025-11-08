@@ -9,6 +9,15 @@
 <body>
     <div class="header">
         <div class="logo">Cybbit</div>
+        <div class="user-menu">
+            {% if session.username %}
+                <span class="username">@{{ session.username }}</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            {% else %}
+                <a href="/login" class="login-btn">Login</a>
+                <a href="/register" class="register-btn">Register</a>
+            {% endif %}
+        </div>
     </div>
     
     <div class="container">

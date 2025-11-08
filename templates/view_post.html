@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ post.title }} - Cybbit</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="header">
+        <div class="logo">Cybbit</div>
+        <div class="user-menu">
+            {% if session.username %}
+                <span class="username">@{{ session.username }}</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            {% else %}
+                <a href="/login" class="login-btn">Login</a>
+                <a href="/register" class="register-btn">Register</a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <a href="/posts" class="nav-item">
+                <span class="icon">📄</span>
+                <span>Posts</span>
+            </a>
+            <a href="/create" class="nav-item">
+                <span class="icon">✏️</span>
+                <span>Create</span>
+            </a>
+        </div>
+        
+        <div class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <a href="/posts" class="back-link">← Back to Posts</a>
+            
+            <div class="post-card post-full">
+                <div class="post-header">
+                    <span class="author">{{ post.author }}</span>
+                    <span class="timestamp">{{ post.timestamp }}</span>
+                </div>
+                <h1 class="post-title-large">{{ post.title }}</h1>
+                <div class="tags">
+                    {% for tag in post.tags %}
+                    <span class="tag">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                <p class="post-content-full">{{ post.content }}</p>
+                <div class="post-actions">
+                    <div class="action-btn">
+                        ↑ Upvote ({{ post.upvotes }})
+                    </div>
+                    <div class="action-btn">
+                        ↓ Downvote ({{ post.downvotes }})
+                    </div>
+                    <div class="action-btn">
+                        🔗 Share
+                    </div>
+                </div>
+            </div>
+            
+            <div class="comments-section">
+                <h2 class="comments-title">Comments ({{ comments|length }})</h2>
+                
+                {% if session.username %}
+                <div class="comment-form-container">
+                    <form method="POST" action="/post/{{ post.id }}/comment" class="comment-form">
+                        <textarea name="content" placeholder="Share your thoughts..." required></textarea>
+                        <button type="submit" class="submit-btn">Post Comment</button>
+                    </form>
+                </div>
+                {% else %}
+                <div class="login-prompt">
+                    <p>You must be <a href="/login">logged in</a> to comment.</p>
+                </div>
+                {% endif %}
+                
+                <div class="comments-list">
+                    {% if comments %}
+                        {% for comment in comments %}
+                        <div class="comment-card">
+                            <div class="comment-header">
+                                <span class="author">{{ comment.author }}</span>
+                                <span class="timestamp">{{ comment.timestamp }}</span>
+                            </div>
+                            <p class="comment-content">{{ comment.content }}</p>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-comments">No comments yet. Be the first to comment!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

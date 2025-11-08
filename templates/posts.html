@@ -9,6 +9,15 @@
 <body>
     <div class="header">
         <div class="logo">Cybbit</div>
+        <div class="user-menu">
+            {% if session.username %}
+                <span class="username">@{{ session.username }}</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            {% else %}
+                <a href="/login" class="login-btn">Login</a>
+                <a href="/register" class="register-btn">Register</a>
+            {% endif %}
+        </div>
     </div>
     
     <div class="container">
@@ -24,32 +33,48 @@
         </div>
         
         <div class="content">
-            {% for post in posts %}
-            <div class="post-card">
-                <div class="post-header">
-                    <span class="author">{{ post.author }}</span>
-                    <span class="timestamp">{{ post.timestamp }}</span>
-                </div>
-                <h2 class="post-title">{{ post.title }}</h2>
-                <div class="tags">
-                    {% for tag in post.tags %}
-                    <span class="tag">{{ tag }}</span>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
                     {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% if posts %}
+                {% for post in posts %}
+                <a href="/post/{{ post.id }}" class="post-link">
+                    <div class="post-card">
+                        <div class="post-header">
+                            <span class="author">{{ post.author }}</span>
+                            <span class="timestamp">{{ post.timestamp }}</span>
+                        </div>
+                        <h2 class="post-title">{{ post.title }}</h2>
+                        <div class="tags">
+                            {% for tag in post.tags %}
+                            <span class="tag">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        <p class="post-content">{{ post.content[:200] }}{% if post.content|length > 200 %}...{% endif %}</p>
+                        <div class="post-actions">
+                            <div class="action-btn">
+                                ↑ Upvote ({{ post.upvotes }})
+                            </div>
+                            <div class="action-btn">
+                                ↓ Downvote ({{ post.downvotes }})
+                            </div>
+                            <div class="action-btn">
+                                💬 View Post
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            {% else %}
+                <div class="post-card">
+                    <p style="text-align: center; color: #9ca3af;">No posts yet. Be the first to create one!</p>
                 </div>
-                <p class="post-content">{{ post.content }}</p>
-                <div class="post-actions">
-                    <div class="action-btn">
-                        ↑ Upvote ({{ post.upvotes }})
-                    </div>
-                    <div class="action-btn">
-                        ↓ Downvote ({{ post.downvotes }})
-                    </div>
-                    <div class="action-btn">
-                        🔗 Share
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
+            {% endif %}
         </div>
     </div>
 </body>
