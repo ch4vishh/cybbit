@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from functools import wraps
 import random
@@ -109,13 +109,13 @@ def send_verification_email(email, code):
         msg = MIMEMultipart()
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = email
-        msg['Subject'] = 'Cybbit - Email Verification Code'
+        msg['Subject'] = 'CyberPulse - Email Verification Code'
         
         body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #0f1419; color: #e4e6eb; padding: 20px;">
             <div style="max-width: 600px; margin: 0 auto; background-color: #1a2332; border-radius: 8px; padding: 30px; border: 1px solid #2d3748;">
-                <h1 style="color: #ffffff; margin-bottom: 20px;">Welcome to Cybbit!</h1>
+                <h1 style="color: #ffffff; margin-bottom: 20px;">Welcome to CyberPulse!</h1>
                 <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
                     Thank you for registering. Please use the verification code below to complete your registration:
                 </p>
@@ -237,6 +237,7 @@ def get_all_posts():
         })
     
     return posts
+
 
 def get_post_by_id(post_id):
     """Fetch a single post by ID"""
@@ -413,47 +414,103 @@ def create_post():
     flash('Post created successfully!', 'success')
     return redirect(url_for('posts_page'))
 
-# Email configuration - UPDATE THESE WITH YOUR CREDENTIALS
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_ADDRESS = 'noreply.cyberpulse@gmail.com'
-EMAIL_PASSWORD = 'sudo repolist'
-
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        identifier = request.form.get('identifier', '').strip()
+        password = request.form.get('password', '').strip()
         
-        if verify_user(username, password):
-            session['username'] = username
-            flash('Login successful!', 'success')
+        # Check if user exists first
+        if not user_exists(identifier):
+            flash('This user is not registered. Would you like to create an account?', 'error')
+            return render_template('login.html', show_register_prompt=True)
+        
+        # Verify password
+        user = verify_login(identifier, password)
+        if user:
+            session['username'] = user['username']
+            flash('Login successful! Welcome back.', 'success')
             return redirect(url_for('posts_page'))
         else:
-            flash('Invalid username or password.', 'error')
+            flash('Incorrect password. Please try again.', 'error')
+            return render_template('login.html')
     
-    return render_template('login.html')
+    return render_template('login.html', show_register_prompt=False)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register_page():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password')
+        step = request.form.get('step', '1')
         
-        if password != confirm_password:
-            flash('Passwords do not match.', 'error')
-        elif len(password) < 6:
-            flash('Password must be at least 6 characters.', 'error')
-        elif create_user(username, password):
-            flash('Registration successful! Please login.', 'success')
-            return redirect(url_for('login_page'))
-        else:
-            flash('Username already exists.', 'error')
+        if step == '1':
+            username = request.form.get('username', '').strip()
+            email = request.form.get('email', '').strip()
+            
+            if not username or not email:
+                flash('Username and email are required.', 'error')
+                return render_template('register.html', step=1)
+            
+            if username_exists(username):
+                flash('This username is already registered. Please choose a different username.', 'error')
+                return render_template('register.html', step=1)
+            
+            if email_exists(email):
+                flash('This email address is already registered. Please use a different email or login.', 'error')
+                return render_template('register.html', step=1)
+            
+            code = generate_verification_code()
+            save_verification_code(email, code)
+            
+            if send_verification_email(email, code):
+                session['temp_username'] = username
+                session['temp_email'] = email
+                flash('Verification code sent to your email!', 'success')
+                return render_template('register.html', step=2, email=email)
+            else:
+                flash('Failed to send verification email. Please try again.', 'error')
+                return render_template('register.html', step=1)
+        
+        elif step == '2':
+            code = request.form.get('code', '').strip()
+            email = session.get('temp_email')
+            
+            if verify_code(email, code):
+                flash('Email verified! Please create your password.', 'success')
+                return render_template('register.html', step=3)
+            else:
+                flash('Invalid or expired verification code. Please try again.', 'error')
+                return render_template('register.html', step=2, email=email)
+        
+        elif step == '3':
+            password = request.form.get('password', '')
+            confirm_password = request.form.get('confirm_password', '')
+            username = session.get('temp_username')
+            email = session.get('temp_email')
+            
+            if not password or not confirm_password:
+                flash('Please enter both password fields.', 'error')
+                return render_template('register.html', step=3)
+            
+            if password != confirm_password:
+                flash('Passwords do not match.', 'error')
+                return render_template('register.html', step=3)
+            
+            if len(password) < 6:
+                flash('Password must be at least 6 characters long.', 'error')
+                return render_template('register.html', step=3)
+            
+            if create_user(username, email, password):
+                session.pop('temp_username', None)
+                session.pop('temp_email', None)
+                flash('Registration successful! Please login with your credentials.', 'success')
+                return redirect(url_for('login_page'))
+            else:
+                flash('Registration failed. Please try again.', 'error')
+                return render_template('register.html', step=3)
     
-    return render_template('register.html')
+    return render_template('register.html', step=1)
+
 
 @app.route('/logout')
 def logout():
