@@ -71,15 +71,17 @@
                 </div>
                 
                 <div class="post-actions">
-                    <div class="action-btn">
-                        ↑ Upvote ({{ post.upvotes }})
-                    </div>
-                    <div class="action-btn">
-                        ↓ Downvote ({{ post.downvotes }})
-                    </div>
-                    <div class="action-btn">
-                        🔗 Share
-                    </div>
+                    <form method="POST" action="{{ url_for('vote_post', post_id=post.id) }}" style="display:inline;">
+                        <input type="hidden" name="action" value="up">
+                        <button type="submit" class="action-btn">↑ Upvote ({{ post.upvotes }})</button>
+                    </form>
+
+                    <form method="POST" action="{{ url_for('vote_post', post_id=post.id) }}" style="display:inline;">
+                        <input type="hidden" name="action" value="down">
+                        <button type="submit" class="action-btn">↓ Downvote ({{ post.downvotes }})</button>
+                    </form>
+
+                    <div class="action-btn">🔗 Share</div>
                 </div>
             </div>
             
@@ -117,5 +119,9 @@
             </div>
         </div>
     </div>
+
+
+<script src="{{ url_for('static', filename='js/votes.js') }}"></script>
+
 </body>
 </html>

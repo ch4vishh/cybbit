@@ -5,70 +5,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CyberPulse - Cybersecurity Forum</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Using a common icon library for cleaner icons. You can swap this out. -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 </head>
 <body>
+    
+    <!-- 1. HEADER: Restructured to match target layout -->
     <div class="header">
         <div class="logo">CyberPulse</div>
+        
+        <!-- Placeholder for search bar from target -->
+        <div class="search-container">
+            <input type="text" placeholder="Search CyberPulse..." class="search-bar">
+        </div>
+
         <div class="user-menu">
+            <!-- Target-style nav -->
+            <a href="{{ url_for('posts_page') }}" class="nav-btn">Home</a>
             {% if session.username %}
-                <span class="username">@{{ session.username }}</span>
-                <a href="/logout" class="logout-btn">Logout</a>
+                <a href="{{ url_for('profile_page') }}" class="nav-btn">Profile</a>
+                <!-- Placeholder for Avatar -->
+                <a href="{{ url_for('profile_page') }}" class="avatar-link" title="@{{ session.username }}">
+                    <div class="avatar-placeholder">
+                        {{ session.username[0]|upper }}
+                    </div>
+                </a>
+                <a href="{{ url_for('logout') }}" class="logout-btn nav-btn">Logout</a>
             {% else %}
-                <a href="/login" class="login-btn">Login</a>
-                <a href="/register" class="register-btn">Register</a>
+                <a href="{{ url_for('login_page') }}" class="login-btn nav-btn">Login</a>
+                <a href="{{ url_for('register_page') }}" class="register-btn nav-btn">Register</a>
             {% endif %}
         </div>
     </div>
     
     <div class="container">
+        <!-- 2. SIDEBAR: Added Profile link -->
         <div class="sidebar">
-            <a href="/posts" class="nav-item active">
-                <span class="icon">📄</span>
+            <a href="{{ url_for('posts_page') }}" class="nav-item active">
+                <span class="icon"><i class="fas fa-file-alt"></i></span>
                 <span>Posts</span>
             </a>
-            <a href="/create" class="nav-item">
-                <span class="icon">✏️</span>
+            <a href="{{ url_for('create_page') }}" class="nav-item">
+                <span class="icon"><i class="fas fa-pencil-alt"></i></span>
                 <span>Create</span>
             </a>
+            <!-- Add Profile link, which exists in app.py -->
+            {% if session.username %}
+            <a href="{{ url_for('profile_page') }}" class="nav-item">
+                <span class="icon"><i class="fas fa-user"></i></span>
+                <span>Profile</span>
+            </a>
+            {% endif %}
         </div>
         
         <div class="content">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
+                    <div class="flash-messages">
                     {% for category, message in messages %}
                     <div class="alert alert-{{ category }}">{{ message }}</div>
                     {% endfor %}
+                    </div>
                 {% endif %}
             {% endwith %}
             
             {% if posts %}
                 {% for post in posts %}
-                <a href="/post/{{ post.id }}" class="post-link">
-                    <div class="post-card">
-                        <div class="post-header">
-                            <span class="author">{{ post.author }}</span>
-                            <span class="timestamp">{{ post.timestamp }}</span>
-                        </div>
-                        <h2 class="post-title">{{ post.title }}</h2>
-                        <div class="tags">
-                            {% for tag in post.tags %}
-                            <span class="tag">{{ tag }}</span>
-                            {% endfor %}
-                        </div>
-                        <p class="post-content">{{ post.content[:200] }}{% if post.content|length > 200 %}...{% endif %}</p>
-                        <div class="post-actions">
-                            <div class="action-btn">
-                                ↑ Upvote ({{ post.upvotes }})
-                            </div>
-                            <div class="action-btn">
-                                ↓ Downvote ({{ post.downvotes }})
-                            </div>
-                            <div class="action-btn">
-                                💬 View Post
-                            </div>
-                        </div>
+                <!-- 
+                  3. POST CARD: 
+                   - Removed the outer <a> tag.
+                   - Added data-post-id for JavaScript to find.
+                -->
+                <div class="post-card" data-post-id="{{ post.id }}">
+                    <div class="post-header">
+                        <span class="author">{{ post.author }}</span>
+                        <span class="timestamp">{{ post.timestamp }}</span>
                     </div>
-                </a>
+
+                    <!-- 4. POST LINK: Only the title is the link now -->
+                    <h2 class="post-title">
+                        <a href="/post/{{ post.id }}">{{ post.title }}</a>
+                    </h2>
+
+                    <!-- 5. POST CONTENT: Snippet is good, removed tags for a cleaner feed like the target -->
+                    <p class="post-content">{{ post.content[:200] }}{% if post.content|length > 200 %}...{% endif %}</p>
+                    
+                    <!-- 6. POST ACTIONS: Replaced <form> with JS-driven buttons -->
+                    <div class="post-actions">
+                        <button class="action-btn vote-btn" data-vote="up" aria-label="Upvote">
+                            <span class="icon">↑</span>
+                            <span class="count">{{ post.upvotes }}</span>
+                        </button>
+                        <button class="action-btn vote-btn" data-vote="down" aria-label="Downvote">
+                            <span class="icon">↓</span>
+                            <span class="count">{{ post.downvotes }}</span>
+                        </button>
+                        <a href="/post/{{ post.id }}#comments" class="action-btn comments-link">
+                           <span class="icon"><i class="fas fa-comment"></i></span>
+                           <!-- Your get_all_posts doesn't return comment count, so just text -->
+                           <span>Comment</span>
+                        </a>
+                        <button class="action-btn save-btn">
+                            <span class="icon"><i class="fas fa-bookmark"></i></span>
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </div>
                 {% endfor %}
             {% else %}
                 <div class="post-card">
@@ -77,5 +119,8 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- This script is now required for voting to work -->
+    <script src="{{ url_for('static', filename='js/votes.js') }}"></script>
 </body>
 </html>

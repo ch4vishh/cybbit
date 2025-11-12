@@ -10,6 +10,7 @@ from email.mime.multipart import MIMEMultipart
 import os
 import base64
 from werkzeug.utils import secure_filename
+from flask import jsonify
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this-in-production'  # Change this!
@@ -65,6 +66,32 @@ def init_db():
             email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS votes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            post_id INTEGER NOT NULL,
+            value INTEGER NOT NULL,   -- 1 for upvote, -1 for downvote
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (user_id, post_id),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (post_id) REFERENCES posts(id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS votes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            vote INTEGER NOT NULL CHECK (vote IN (1, -1)),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(post_id, user_id),
+            FOREIGN KEY (post_id) REFERENCES posts(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
         )
     ''')    
     
@@ -287,6 +314,34 @@ def get_post_by_id(post_id):
         }
     return None
 
+
+def get_user_id_by_username(username):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
+    row = cursor.fetchone()
+    conn.close()
+    return row['id'] if row else None
+
+def get_post_vote_counts(post_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM votes WHERE post_id = ? AND vote = 1', (post_id,))
+    up = cursor.fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM votes WHERE post_id = ? AND vote = -1', (post_id,))
+    down = cursor.fetchone()[0]
+    conn.close()
+    return up, down
+
+def get_user_vote_for_post(user_id, post_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT vote FROM votes WHERE user_id = ? AND post_id = ?', (user_id, post_id))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else 0  # 1, -1 or 0
+
+
 def get_comments_for_post(post_id):
     """Fetch all comments for a specific post"""
     conn = get_db()
@@ -420,6 +475,93 @@ def add_comment_to_post(post_id):
         flash('Comment cannot be empty.', 'error')
     
     return redirect(url_for('view_post', post_id=post_id))
+
+
+@app.route('/post/<int:post_id>/vote', methods=['POST'])
+@login_required
+def vote_post(post_id):
+    # Expect JSON or form: vote='up' or 'down'
+    vote_action = request.json.get('vote') if request.is_json else request.form.get('vote')
+    if vote_action not in ('up', 'down'):
+        return jsonify({'error': 'Invalid vote action'}), 400
+
+    username = session.get('username')
+    user_id = get_user_id_by_username(username)
+    if user_id is None:
+        return jsonify({'error': 'User not found'}), 403
+
+    new_vote = 1 if vote_action == 'up' else -1
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Check existing vote
+    cursor.execute('SELECT id, vote FROM votes WHERE user_id = ? AND post_id = ?', (user_id, post_id))
+    existing = cursor.fetchone()
+
+    try:
+        if existing is None:
+            # Insert new vote
+            cursor.execute('INSERT INTO votes (post_id, user_id, vote) VALUES (?, ?, ?)',
+                           (post_id, user_id, new_vote))
+        else:
+            existing_vote = existing['vote']
+            if existing_vote == new_vote:
+                # user clicked same vote again -> remove (unvote)
+                cursor.execute('DELETE FROM votes WHERE id = ?', (existing['id'],))
+            else:
+                # switch vote: update row
+                cursor.execute('UPDATE votes SET vote = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?',
+                               (new_vote, existing['id']))
+
+        conn.commit()
+
+        # Recalculate counts (single source of truth)
+        cursor.execute('SELECT COUNT(*) FROM votes WHERE post_id = ? AND vote = 1', (post_id,))
+        up = cursor.fetchone()[0]
+        cursor.execute('SELECT COUNT(*) FROM votes WHERE post_id = ? AND vote = -1', (post_id,))
+        down = cursor.fetchone()[0]
+
+        # Optional: update cached counts in posts table (keeps your posts.upvotes/downvotes aligned)
+        cursor.execute('UPDATE posts SET upvotes = ?, downvotes = ? WHERE id = ?', (up, down, post_id))
+        conn.commit()
+
+        # Get what the user currently has after operation
+        cursor.execute('SELECT vote FROM votes WHERE post_id = ? AND user_id = ?', (post_id, user_id))
+        row = cursor.fetchone()
+        user_vote = row['vote'] if row else 0
+
+        return jsonify({'upvotes': up, 'downvotes': down, 'user_vote': user_vote})
+    except Exception as e:
+        conn.rollback()
+        print("Vote error:", e)
+        return jsonify({'error': 'Server error'}), 500
+    finally:
+        conn.close()
+
+    conn = get_db()
+
+    cursor = conn.cursor()
+    cursor.execute('SELECT upvotes, downvotes FROM posts WHERE id = ?', (post_id,))
+    counts = cursor.fetchone()
+    conn.close()
+
+    up = counts['upvotes'] if counts else 0
+    down = counts['downvotes'] if counts else 0
+
+# If AJAX request, return JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.accept_json:
+        return jsonify({
+            'status': 'success',
+            'message': 'Vote processed.',
+            'post_id': post_id,
+            'upvotes': up,
+            'downvotes': down
+        }), 200
+
+# fallback for normal POST (non-AJAX)
+    return redirect(request.referrer or url_for('posts_page'))
+
 
 @app.route('/create')
 def create_page():
@@ -580,6 +722,135 @@ def logout():
     session.pop('username', None)
     flash('You have been logged out.', 'success')
     return redirect(url_for('posts_page'))
+
+
+@app.route('/profile')
+@login_required
+def profile_page():
+    """
+    User profile overview:
+      - basic user info (username, email, member since)
+      - total posts by user
+      - total upvotes & downvotes received across their posts
+      - total comments made by user
+      - total upvotes/downvotes GIVEN by the user (from votes table)
+      - top 3 tags used in user's own posts (most frequent)
+      - top 3 tags the user has voted on (by frequency)
+      - recent posts by user (last 5)
+    """
+    username = session.get('username')  # stored without '@'
+    if not username:
+        flash('User not found in session.', 'error')
+        return redirect(url_for('login_page'))
+
+    author_tag = f'@{username}'  # posts/comments store author with @
+    user_id = get_user_id_by_username(username)
+    if user_id is None:
+        flash('User record not found.', 'error')
+        return redirect(url_for('login_page'))
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Basic user info
+    cursor.execute('SELECT username, email, created_at FROM users WHERE id = ?', (user_id,))
+    user_row = cursor.fetchone()
+    user_email = user_row['email'] if user_row and 'email' in user_row.keys() else None
+    member_since = user_row['created_at'] if user_row and 'created_at' in user_row.keys() else None
+
+    # Total posts by user
+    cursor.execute('SELECT COUNT(*) AS cnt FROM posts WHERE author = ?', (author_tag,))
+    total_posts = cursor.fetchone()['cnt'] or 0
+
+    # Upvotes/downvotes received across their posts (sum of post columns)
+    cursor.execute('SELECT IFNULL(SUM(upvotes), 0) AS up_recv, IFNULL(SUM(downvotes), 0) AS down_recv FROM posts WHERE author = ?', (author_tag,))
+    recv_row = cursor.fetchone()
+    upvotes_received = recv_row['up_recv'] if recv_row and 'up_recv' in recv_row.keys() else (recv_row[0] if recv_row else 0)
+    downvotes_received = recv_row['down_recv'] if recv_row and 'down_recv' in recv_row.keys() else (recv_row[1] if recv_row else 0)
+
+    # Total comments made by user
+    cursor.execute('SELECT COUNT(*) AS cnt FROM comments WHERE author = ?', (author_tag,))
+    comments_count = cursor.fetchone()['cnt'] or 0
+
+    # Votes GIVEN by this user (from votes table)
+    cursor.execute('''
+        SELECT
+          SUM(CASE WHEN value = 1 THEN 1 ELSE 0 END) AS up_given,
+          SUM(CASE WHEN value = -1 THEN 1 ELSE 0 END) AS down_given
+        FROM votes WHERE user_id = ?
+    ''', (user_id,))
+    given_row = cursor.fetchone()
+    upvotes_given = given_row['up_given'] or 0
+    downvotes_given = given_row['down_given'] or 0
+
+    # Top tags used in user's own posts
+    cursor.execute('SELECT tags FROM posts WHERE author = ?', (author_tag,))
+    rows = cursor.fetchall()
+    tag_counts = {}
+    for r in rows:
+        try:
+            tags = json.loads(r['tags'])
+            if isinstance(tags, list):
+                for t in tags:
+                    tag_counts[t] = tag_counts.get(t, 0) + 1
+        except Exception:
+            # ignore malformed tags
+            continue
+    # sort and pick top 3
+    top_tags_posted = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+    # transform to list of dicts for template
+    top_tags_posted = [{'tag': t, 'count': c} for t, c in top_tags_posted]
+
+    # Top tags the user has voted ON (based on posts they voted on)
+    cursor.execute('''
+        SELECT p.tags as tags FROM posts p
+        JOIN votes v ON p.id = v.post_id
+        WHERE v.user_id = ?
+    ''', (user_id,))
+    rows = cursor.fetchall()
+    tag_counts_voted = {}
+    for r in rows:
+        try:
+            tags = json.loads(r['tags'])
+            if isinstance(tags, list):
+                for t in tags:
+                    tag_counts_voted[t] = tag_counts_voted.get(t, 0) + 1
+        except Exception:
+            continue
+    top_tags_voted = sorted(tag_counts_voted.items(), key=lambda x: x[1], reverse=True)[:3]
+    top_tags_voted = [{'tag': t, 'count': c} for t, c in top_tags_voted]
+
+    # Recent posts by this user (last 5)
+    cursor.execute('SELECT id, title, content, upvotes, downvotes, created_at, tags FROM posts WHERE author = ? ORDER BY created_at DESC LIMIT 5', (author_tag,))
+    recent_rows = cursor.fetchall()
+    recent_posts = []
+    for r in recent_rows:
+        recent_posts.append({
+            'id': r['id'],
+            'title': r['title'],
+            'content': r['content'],
+            'upvotes': r['upvotes'],
+            'downvotes': r['downvotes'],
+            'created_at': format_timestamp(r['created_at']),
+            'tags': json.loads(r['tags']) if r['tags'] else []
+        })
+
+    conn.close()
+
+    return render_template('profile.html',
+                           username=username,
+                           email=user_email,
+                           member_since=member_since,
+                           total_posts=total_posts,
+                           upvotes_received=upvotes_received,
+                           downvotes_received=downvotes_received,
+                           comments_count=comments_count,
+                           upvotes_given=upvotes_given,
+                           downvotes_given=downvotes_given,
+                           top_tags_posted=top_tags_posted,
+                           top_tags_voted=top_tags_voted,
+                           recent_posts=recent_posts)
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

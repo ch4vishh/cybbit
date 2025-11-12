@@ -814,3 +814,104 @@ input[type="password"]:focus {
     font-size: 12px;
     margin-top: 10px;
 }
+
+
+.container {
+  gap: 24px; /* keeps sidebar and content spaced */
+  align-items: flex-start;
+}
+
+/* keep sidebar width as-is (250px in your file) and make content flexible */
+.content {
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  min-width: 0; /* prevent overflow in narrow screens */
+  max-width: none; /* allow content to use available width */
+}
+
+/* Ensure posts are stacked vertically (single column) */
+.post-list, .posts-container, .content > .post-card, .content .post-card {
+  display: block;
+}
+
+/* Force each post-card to use full width of content column */
+.post-card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Wrapper for each post (useful for JS selectors); you can add this in templates */
+.post-wrapper {
+  width: 100%;
+}
+
+/* Ensure clickable card anchor behaves like a block so whole card is clickable */
+.post-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Actions: keep compact inline layout and allow wrapping on small screens */
+.post-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* Unified styling for action buttons (applies to <a> and <button> with .action-btn) */
+.action-btn,
+button.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  color: #e6eef8;
+  border: 1px solid rgba(255,255,255,0.06);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* remove default native button appearance */
+button.action-btn {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* pressed / toggled state for votes */
+button.action-btn[aria-pressed="true"],
+.action-btn.voted {
+  background: rgba(96,165,250,0.12);
+  border-color: rgba(96,165,250,0.25);
+}
+
+/* small count spans inside buttons; these IDs are required by the JS */
+.up-count, .down-count {
+  font-weight: 700;
+  margin-left: 6px;
+  color: inherit;
+}
+
+/* If you used <form class="ajax-vote">, ensure forms don't break layout */
+form.ajax-vote {
+  display: inline-block;
+  margin: 0;
+}
+
+/* Responsive: hide sidebar on small screens (optional) */
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .container { padding: 12px; }
+  .content { width: 100%; padding: 12px; }
+}
+
+/* Small aesthetic tweak to prevent the tiny default buttons appearing */
+button, input[type="submit"] {
+  font-family: inherit;
+}
